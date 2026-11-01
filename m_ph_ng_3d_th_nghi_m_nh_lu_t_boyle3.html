@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Báo Cáo Thực Hành: Định Luật Boyle - Tổ 3 Lớp 12A4 (THPT Nguyễn Khuyến)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow: hidden;
+      user-select: none;
+      background-color: #030712;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    canvas {
+      display: block;
+      outline: none;
+    }
+    .glass-panel {
+      background: rgba(11, 19, 43, 0.78);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(56, 189, 248, 0.18);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+    .callout-box {
+      pointer-events: auto;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .callout-box:hover {
+      transform: scale(1.04);
+      border-color: rgba(56, 189, 248, 0.6);
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.3);
+    }
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(56, 189, 248, 0.35);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="text-slate-100 h-screen w-screen relative overflow-hidden">
+
+  <!-- 3D WebGL Canvas Layer -->
+  <div id="webgl-container" class="absolute inset-0 z-0"></div>
+
+  <!-- SVG Overlay vẽ các đường chỉ dẫn (Leader Lines) tránh che khuất mô hình -->
+  <svg id="leader-lines-svg" class="absolute inset-0 w-full h-full pointer-events-none z-10 transition-opacity duration-300">
+    <defs>
+      <linearGradient id="lineGradLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9" />
+        <stop offset="100%" stop-color="#0284c7" stop-opacity="0.2" />
+      </linearGradient>
+      <linearGradient id="lineGradRight" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#0284c7" stop-opacity="0.2" />
+        <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.9" />
+      </linearGradient>
+      <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="2" result="blur" />
+        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+      </filter>
+    </defs>
+    <!-- Polyline / Line elements sẽ được render động qua JS -->
+  </svg>
+
+  <!-- HTML Callout Badges (Nằm lệch hai bên mép trái/phải không che khuất giữa) -->
+  <div id="callouts-container" class="absolute inset-0 pointer-events-none z-20"></div>
+
+  <!-- Header Bar -->
+  <header class="absolute top-3 left-3 right-3 z-30 flex items-center justify-between gap-3 pointer-events-none">
+    <div class="glass-panel px-4 py-2 rounded-2xl flex items-center gap-3.5 pointer-events-auto shadow-2xl border-cyan-500/30">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20">
+        <i class="fa-solid fa-flask-vial text-sm"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">Báo cáo thực hành Vật lí 12</span>
+          <span class="text-xs text-amber-300 font-semibold flex items-center gap-1">
+            <i class="fa-solid fa-user-group text-[11px]"></i> Tổ 3 – Lớp 12A4 | THPT Nguyễn Khuyến
+          </span>
+        </div>
+        <h1 class="text-xs md:text-sm font-bold text-white tracking-tight mt-0.5">
+          Khảo Sát Quá Trình Đẳng Nhiệt Của Khí Lý Tưởng (Định Luật Boyle - Mariotte)
+        </h1>
+      </div>
+    </div>
+
+    <!-- Thanh công cụ góc phải -->
+    <div class="glass-panel p-1.5 rounded-2xl flex items-center gap-1 pointer-events-auto shadow-xl">
+      <button id="btn-toggle-orbit" class="px-2.5 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition text-slate-300 hover:text-white hover:bg-slate-800/60" title="Tự động quay camera 360 độ quanh bàn thí nghiệm">
+        <i class="fa-solid fa-rotate text-cyan-400" id="icon-auto-orbit"></i>
+        <span class="hidden sm:inline">Xoay 360°</span>
+      </button>
+
+      <button id="btn-toggle-labels" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-600 hover:text-white" title="Ẩn/Hiện đường chỉ dẫn chú thích">
+        <i class="fa-solid fa-bezier-curve"></i>
+        <span>Chỉ dẫn (1-5)</span>
+      </button>
+
+      <button id="btn-reset-cam" class="p-1.5 w-8 h-8 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center justify-center text-xs" title="Góc quan sát trực diện chuẩn">
+        <i class="fa-solid fa-expand"></i>
+      </button>
+
+      <button id="btn-toggle-right-panel" class="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-cyan-600/25 hover:brightness-110 transition">
+        <i class="fa-solid fa-table-cells"></i>
+        <span>Bảng số liệu & Đồ thị</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Left Column: Bộ đồng hồ đo & Cụm thao tác pít-tông -->
+  <aside id="left-panel" class="absolute left-3 top-20 bottom-3 z-30 flex flex-col gap-2.5 pointer-events-auto w-72 md:w-80 transition-transform duration-300 ease-out">
+    <!-- Nút collapse panel trái -->
+    <button id="btn-collapse-left" class="absolute -right-3 top-3 w-6 h-6 rounded-full bg-cyan-600 text-white flex items-center justify-center text-xs shadow-md border border-cyan-300/40 hover:scale-110 transition z-40" title="Thu gọn bảng điều khiển">
+      <i class="fa-solid fa-chevron-left text-[10px]" id="icon-collapse-left"></i>
+    </button>
+
+    <!-- Card 1: Giá trị cảm biến đo thời gian thực -->
+    <div class="glass-panel p-3.5 rounded-2xl flex-shrink-0">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-700/50 mb-2.5">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          Đồng hồ quan sát thực tế
+        </span>
+        <span class="text-[11px] font-mono-code px-2 py-0.5 rounded bg-blue-500/20 text-cyan-300 border border-cyan-500/30">T = 298 K (25°C)</span>
+      </div>
+
+      <!-- 2 Cột: Áp suất p & Thể tích V -->
+      <div class="grid grid-cols-2 gap-2 mb-2.5">
+        <div class="bg-slate-900/90 rounded-xl p-2.5 border border-slate-800/80">
+          <div class="text-[11px] text-slate-400 font-medium flex items-center justify-between">
+            <span>Áp suất (p)</span>
+            <i class="fa-solid fa-gauge text-amber-400 text-xs"></i>
+          </div>
+          <div class="mt-1 flex items-baseline gap-1">
+            <span id="val-pressure" class="text-2xl font-bold font-mono-code text-amber-400">1.00</span>
+            <span class="text-[10px] text-slate-400">× 10⁵ Pa</span>
+          </div>
+          <div class="text-[9px] text-slate-400 mt-0.5">ĐCNN: 0,05 × 10⁵ Pa</div>
+        </div>
+
+        <div class="bg-slate-900/90 rounded-xl p-2.5 border border-slate-800/80">
+          <div class="text-[11px] text-slate-400 font-medium flex items-center justify-between">
+            <span>Thể tích (V)</span>
+            <i class="fa-solid fa-vial text-cyan-400 text-xs"></i>
+          </div>
+          <div class="mt-1 flex items-baseline gap-1">
+            <span id="val-volume" class="text-2xl font-bold font-mono-code text-cyan-400">30.0</span>
+            <span class="text-[10px] text-slate-400">cm³</span>
+          </div>
+          <div class="text-[9px] text-slate-400 mt-0.5">ĐCNN: 0,5 cm³</div>
+        </div>
+      </div>
+
+      <!-- Kiểm chứng tích số p × V -->
+      <div class="bg-gradient-to-r from-cyan-950/40 via-blue-950/40 to-slate-900/80 rounded-xl p-2.5 border border-cyan-500/30">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-300 font-medium">Tích số p × V:</span>
+          <span id="val-pv" class="font-mono-code font-bold text-emerald-400 text-sm">30.00 <span class="text-[10px] text-slate-400 font-normal">10⁵ Pa·cm³</span></span>
+        </div>
+        <div class="mt-1 flex items-center justify-between text-[10px] text-slate-400 font-mono-code">
+          <span>Quy luật: p tỉ lệ nghịch V</span>
+          <span class="text-cyan-300">p × V ≈ hằng số</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: Cụm thao tác kéo nén pít-tông -->
+    <div class="glass-panel p-3.5 rounded-2xl flex-1 flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label for="piston-slider" class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+            <i class="fa-solid fa-arrows-up-down text-cyan-400"></i> Điều chỉnh pít-tông
+          </label>
+          <span class="text-xs font-mono-code text-cyan-300 font-bold" id="slider-volume-indicator">V = 30.0 cm³</span>
+        </div>
+
+        <!-- Thanh trượt điều chỉnh thể tích -->
+        <input id="piston-slider" type="range" min="15" max="35" step="0.5" value="30"
+          class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400 focus:outline-none">
+        
+        <div class="flex justify-between text-[10px] font-mono-code text-slate-400 mt-1">
+          <span>15.0 cm³ (Nén sâu)</span>
+          <span>25.0</span>
+          <span>35.0 cm³ (Kéo dãn)</span>
+        </div>
+
+        <!-- Tinh chỉnh từng nấc ĐCNN 0.5 cm3 của học sinh -->
+        <div class="grid grid-cols-2 gap-2 mt-3">
+          <button id="btn-step-down" class="py-1.5 px-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition border border-slate-700">
+            <i class="fa-solid fa-minus text-[10px] text-cyan-400"></i> Nén 0,5 cm³
+          </button>
+          <button id="btn-step-up" class="py-1.5 px-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition border border-slate-700">
+            <i class="fa-solid fa-plus text-[10px] text-cyan-400"></i> Giãn 0,5 cm³
+          </button>
+        </div>
+
+        <!-- Nút chạy chu trình nén giãn tự động -->
+        <div class="mt-2.5">
+          <button id="btn-auto-cycle" class="w-full py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30">
+            <i class="fa-solid fa-play" id="icon-auto-cycle"></i>
+            <span id="text-auto-cycle">Chạy chu trình nén - giãn liên tục</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Nút ghi số liệu vào sổ thực hành -->
+      <div class="pt-3 border-t border-slate-800 mt-3">
+        <button id="btn-record-data" class="w-full py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30">
+          <i class="fa-solid fa-clipboard-check text-sm"></i>
+          <span>Ghi số liệu lần đo này vào Bảng 9.1</span>
+        </button>
+        <div class="text-[10px] text-center text-slate-400 mt-1.5 italic">
+          Mô phỏng sai số thực tế khi đọc vạch chia của học sinh
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Drawer: Bảng 9.1 & Đồ thị thực nghiệm p-V -->
+  <aside id="right-panel" class="absolute right-3 top-20 bottom-3 z-30 w-80 md:w-96 glass-panel p-3.5 rounded-2xl flex flex-col transition-transform duration-300 ease-out translate-x-0">
+    <div class="flex items-center justify-between pb-2.5 border-b border-slate-700/60">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-chart-line text-cyan-400"></i>
+        <h2 class="text-xs font-bold text-white uppercase tracking-wider">Kết Quả Đo Đạc & Đồ Thị</h2>
+      </div>
+      <button id="btn-close-right" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition" title="Đóng panel">
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+    </div>
+
+    <!-- Đồ thị nhánh Hyperbol thực nghiệm -->
+    <div class="mt-2.5 bg-slate-900/90 rounded-xl p-2.5 border border-slate-800">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-xs font-semibold text-slate-200">Đường đẳng nhiệt p theo V</span>
+        <span class="text-[10px] text-cyan-400 font-mono-code font-bold">p = 30,0 / V</span>
+      </div>
+      <div class="relative w-full h-36 bg-slate-950 rounded-lg border border-slate-800/80 overflow-hidden">
+        <canvas id="graph-canvas" class="w-full h-full block"></canvas>
+      </div>
+    </div>
+
+    <!-- Bảng số liệu SGK 9.1 -->
+    <div class="mt-2.5 flex-1 flex flex-col min-h-0 bg-slate-900/90 rounded-xl p-2.5 border border-slate-800">
+      <div class="flex items-center justify-between mb-1.5">
+        <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+          <i class="fa-solid fa-table-list text-emerald-400"></i> Bảng 9.1: Số liệu thực hành
+        </span>
+        <button id="btn-clear-table" class="text-[10px] text-rose-400 hover:text-rose-300 flex items-center gap-1 font-semibold transition">
+          <i class="fa-solid fa-trash-arrow-up"></i> Xóa bảng
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto pr-1">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="text-[10px] text-slate-400 border-b border-slate-800 font-mono-code">
+              <th class="py-1 px-1">Lần đo</th>
+              <th class="py-1 px-1">V (cm³)</th>
+              <th class="py-1 px-1">p (10⁵ Pa)</th>
+              <th class="py-1 px-1 text-right">p × V</th>
+            </tr>
+          </thead>
+          <tbody id="table-body" class="divide-y divide-slate-800/60 font-mono-code text-slate-300 text-[11px]">
+            <!-- Render danh sách các lần đo -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Khung Nhận xét & Kết luận sư phạm của học sinh -->
+      <div class="mt-2 pt-2 border-t border-slate-800 space-y-1">
+        <div class="flex justify-between items-center text-xs">
+          <span class="font-medium text-slate-400">Giá trị trung bình (p × V):</span>
+          <span id="mean-pv-label" class="font-mono-code font-bold text-emerald-400 text-sm">30.01</span>
+        </div>
+        <p class="text-[10px] text-slate-300 leading-relaxed bg-slate-950/60 p-2 rounded-lg border border-slate-800">
+          <strong class="text-emerald-400"><i class="fa-solid fa-circle-check"></i> Nhận xét của Tổ 3:</strong> Trong giới hạn sai số cho phép của dụng cụ đo (áp kế ĐCNN 0,05 × 10⁵ Pa, xi lanh ĐCNN 0,5 cm³), tích số p × V tại các lần đo giữ giá trị xấp xỉ không đổi. Đồ thị p theo V có dạng một nhánh đường hypebol, khẳng định định luật Boyle được nghiệm đúng.
+        </p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Thanh trạng thái Footer -->
+  <footer class="absolute bottom-2.5 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none hidden md:flex items-center gap-3 glass-panel px-4 py-1.5 rounded-full text-[11px] text-slate-300 border-slate-700/60">
+    <span class="flex items-center gap-1.5 text-cyan-300"><i class="fa-solid fa-computer-mouse"></i> Chuột trái xoay 360°</span>
+    <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+    <span class="flex items-center gap-1.5 text-amber-300"><i class="fa-solid fa-arrows-up-down"></i> Cuộn chuột thu phóng</span>
+    <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+    <span>Thực hành: <b>Tổ 3 – Lớp 12A4 (THPT Nguyễn Khuyến)</b></span>
+  </footer>
+
+  <script>
+    /* ==========================================================================
+       1. KHỞI TẠO DỮ LIỆU & BIẾN TOÀN CỤC
+       ========================================================================== */
+    const BASE_PV = 30.0;
+    let currentV = 30.0;
+    let targetNeedleAngle = 0;
+    let currentNeedleAngle = 0;
+
+    let isAutoCycling = false;
+    let cycleSpeed = 6.0; // cm3/s
+    let cycleDir = -1; // -1: nén, +1: dãn
+
+    let isAutoOrbit = false;
+    let showCallouts = true;
+
+    // Bộ số liệu thực hành thực tế có sai số đọc vạch tự nhiên của học sinh
+    let experimentRecords = [
+      { id: 1, v: 35.0, p: 0.85, pv: 29.75 },
+      { id: 2, v: 30.0, p: 1.00, pv: 30.00 },
+      { id: 3, v: 25.0, p: 1.21, pv: 30.25 },
+      { id: 4, v: 20.0, p: 1.50, pv: 30.00 },
+      { id: 5, v: 16.0, p: 1.88, pv: 30.08 }
+    ];
+
+    /* ==========================================================================
+       2. THREE.JS SCENE SETUP VỚI BẦU TRỜI SAO & SAO BĂNG
+       ========================================================================== */
+    const container = document.getElementById('webgl-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x020617); // Không gian vũ trụ đêm
+    scene.fog = new THREE.FogExp2(0x020617, 0.022);
+
+    const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 300);
+    camera.position.set(2.6, 2.7, 4.8);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 2.0;
+    controls.maxDistance = 11.0;
+    controls.maxPolarAngle = Math.PI / 2 + 0.03;
+    controls.target.set(0, 1.7, 0);
+
+    /* --- HỆ THỐNG BẦU TRỜI SAO LẤP LÁNH (TWINKLING STARS) --- */
+    const starCount = 3200;
+    const starGeometry = new THREE.BufferGeometry();
+    const starPositions = new Float32Array(starCount * 3);
+    const starColors = new Float32Array(starCount * 3);
+    const starTwinkleSpeeds = new Float32Array(starCount);
+
+    for (let i = 0; i < starCount; i++) {
+      const radius = 40 + Math.random() * 55;
+      const theta = 2 * Math.PI * Math.random();
+      const phi = Math.acos(2 * Math.random() - 1);
+
+      starPositions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+      starPositions[i * 3 + 1] = Math.max(0.2, radius * Math.cos(phi)); // Nằm trên vòm trời
+      starPositions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+
+      const colorPick = Math.random();
+      if (colorPick > 0.8) {
+        starColors[i * 3] = 0.56; starColors[i * 3 + 1] = 0.82; starColors[i * 3 + 2] = 1.0; // Xanh lam nhạt
+      } else if (colorPick > 0.6) {
+        starColors[i * 3] = 0.95; starColors[i * 3 + 1] = 0.80; starColors[i * 3 + 2] = 1.0; // Tím phấn
+      } else {
+        starColors[i * 3] = 1.0; starColors[i * 3 + 1] = 1.0; starColors[i * 3 + 2] = 1.0; // Trắng sáng
+      }
+
+      starTwinkleSpeeds[i] = 1.5 + Math.random() * 4.0;
+    }
+
+    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+
+    const starMaterial = new THREE.PointsMaterial({
+      size: 0.18,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.85
+    });
+    const starField = new THREE.Points(starGeometry, starMaterial);
+    scene.add(starField);
+
+    /* --- HIỆU ỨNG SAO BĂNG (SHOOTING STAR) --- */
+    const shootingStarGeo = new THREE.BufferGeometry();
+    const sPos = new Float32Array([0, 0, 0, -2, 1.2, -1.8]);
+    shootingStarGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
+    const shootingStarMat = new THREE.LineBasicMaterial({
+      color: 0x67e8f9,
+      transparent: true,
+      opacity: 0.0
+    });
+    const shootingStar = new THREE.Line(shootingStarGeo, shootingStarMat);
+    scene.add(shootingStar);
+
+    let shootingActive = false;
+    let shootingTime = 0;
+    let shootingOrigin = new THREE.Vector3();
+    let shootingVel = new THREE.Vector3();
+
+    function triggerShootingStar() {
+      if (shootingActive) return;
+      shootingActive = true;
+      shootingTime = 0;
+      shootingOrigin.set(
+        (Math.random() - 0.5) * 40,
+        18 + Math.random() * 10,
+        -25 + (Math.random() - 0.5) * 30
+      );
+      shootingVel.set(8 + Math.random() * 6, -6 - Math.random() * 4, 6 + Math.random() * 4);
+      shootingStarMat.opacity = 1.0;
+    }
+
+    /* Đèn chiếu rọi tập trung thiết bị (Spotlight Lab Studio) */
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+
+    const mainSpot = new THREE.SpotLight(0xffffff, 2.2);
+    mainSpot.position.set(3.5, 7.0, 4.0);
+    mainSpot.target.position.set(0, 1.5, 0);
+    mainSpot.angle = Math.PI / 4.5;
+    mainSpot.penumbra = 0.4;
+    mainSpot.castShadow = true;
+    mainSpot.shadow.mapSize.width = 2048;
+    mainSpot.shadow.mapSize.height = 2048;
+    mainSpot.shadow.bias = -0.0004;
+    scene.add(mainSpot);
+    scene.add(mainSpot.target);
+
+    // Ánh sáng viền cyan huyền ảo
+    const cyanRim = new THREE.PointLight(0x06b6d4, 1.3, 10);
+    cyanRim.position.set(-3.2, 3.2, -2.0);
+    scene.add(cyanRim);
+
+    // Mặt bàn thí nghiệm đá cẩm thạch đen phản xạ
+    const labTable = new THREE.Mesh(
+      new THREE.CylinderGeometry(4.5, 4.5, 0.2, 64),
+      new THREE.MeshStandardMaterial({
+        color: 0x090d1a,
+        roughness: 0.25,
+        metalness: 0.65
+      })
+    );
+    labTable.position.y = -0.1;
+    labTable.receiveShadow = true;
+    scene.add(labTable);
+
+    const tableGrid = new THREE.GridHelper(9, 24, 0x0284c7, 0x1e293b);
+    tableGrid.position.y = 0.005;
+    scene.add(tableGrid);
+
+    /* ==========================================================================
+       3. TẠO MÔ HÌNH BỘ THÍ NGHIỆM CHUẨN SGK (HÌNH 9.4)
+       ========================================================================== */
+    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.95, roughness: 0.12 });
+    const castIronMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.6 });
+    const redClampMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, metalness: 0.25, roughness: 0.35 });
+    const rubberPistonMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.85, metalness: 0.1 });
+    const brassMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.85, roughness: 0.25 });
+    const glassTubeMat = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.28,
+      roughness: 0.05,
+      transmission: 0.94,
+      ior: 1.5,
+      thickness: 0.06,
+      depthWrite: false
+    });
+
+    /* --- (4) GIÁ ĐỠ THÍ NGHIỆM (Chân kiềng chữ V & Cọc thép) --- */
+    const standGroup = new THREE.Group();
+    scene.add(standGroup);
+
+    // Chân đế chữ V đúc gang đen vững chắc
+    const legGeo = new THREE.BoxGeometry(0.12, 0.07, 0.9);
+    const legL = new THREE.Mesh(legGeo, castIronMat);
+    legL.position.set(-0.25, 0.035, -0.2);
+    legL.rotation.y = -0.8;
+    legL.castShadow = true;
+    standGroup.add(legL);
+
+    const legR = new THREE.Mesh(legGeo, castIronMat);
+    legR.position.set(0.25, 0.035, -0.2);
+    legR.rotation.y = 0.8;
+    legR.castShadow = true;
+    standGroup.add(legR);
+
+    const legCenter = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.07, 0.65), castIronMat);
+    legCenter.position.set(0, 0.035, 0.25);
+    legCenter.castShadow = true;
+    standGroup.add(legCenter);
+
+    const standHub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.08, 24), castIronMat);
+    standHub.position.y = 0.04;
+    standHub.castShadow = true;
+    standGroup.add(standHub);
+
+    // Cọc kim loại đứng thẳng
+    const standPole = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.019, 3.4, 24), chromeMat);
+    standPole.position.set(0, 1.7, 0);
+    standPole.castShadow = true;
+    standGroup.add(standPole);
+
+    // Khớp kẹp đôi xi lanh (Màu đỏ mận)
+    const clampSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.24, 0.14), redClampMat);
+    clampSleeve.position.set(0, 1.75, 0);
+    clampSleeve.castShadow = true;
+    standGroup.add(clampSleeve);
+
+    const clampArm = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.12, 0.06), redClampMat);
+    clampArm.position.set(0.2, 1.75, 0);
+    clampArm.castShadow = true;
+    standGroup.add(clampArm);
+
+    /* --- (1) XI LANH & (5) THƯỚC ĐO VẠCH --- */
+    const cylinderX = 0.38;
+    const cylinderBaseY = 0.95;
+    const cylinderH = 1.65;
+    const cylR = 0.13;
+
+    const cylGroup = new THREE.Group();
+    cylGroup.position.set(cylinderX, cylinderBaseY, 0);
+    scene.add(cylGroup);
+
+    // Nắp chặn đáy và nắp dẫn hướng trên
+    const baseCap = new THREE.Mesh(new THREE.CylinderGeometry(cylR + 0.02, cylR + 0.02, 0.08, 32), redClampMat);
+    baseCap.position.y = 0.04;
+    baseCap.castShadow = true;
+    cylGroup.add(baseCap);
+
+    const topCap = new THREE.Mesh(new THREE.CylinderGeometry(cylR + 0.02, cylR + 0.02, 0.08, 32), redClampMat);
+    topCap.position.y = cylinderH - 0.04;
+    topCap.castShadow = true;
+    cylGroup.add(topCap);
+
+    // Ống xi lanh thủy tinh chịu áp suất cao
+    const cylTube = new THREE.Mesh(
+      new THREE.CylinderGeometry(cylR, cylR, cylinderH - 0.08, 32, 1, true),
+      glassTubeMat
+    );
+    cylTube.position.y = cylinderH / 2;
+    cylGroup.add(cylTube);
+
+    // Texture thước chia vạch thể tích sắc nét (10 đến 35 cm3)
+    function generateRulerTexture() {
+      const cv = document.createElement('canvas');
+      cv.width = 512;
+      cv.height = 2048;
+      const ctx = cv.getContext('2d');
+      ctx.clearRect(0, 0, cv.width, cv.height);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.fillRect(0, 0, cv.width, cv.height);
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.fillStyle = '#ffffff';
+      ctx.lineWidth = 4;
+      ctx.font = 'bold 36px Arial';
+
+      const totalTicks = 50; // mỗi vạch 0.5 cm3 từ 10 đến 35
+      for (let i = 0; i <= totalTicks; i++) {
+        const y = cv.height - 140 - (i / totalTicks) * (cv.height - 280);
+        const val = (10 + (i / totalTicks) * 25).toFixed(1);
+
+        if (i % 10 === 0) {
+          ctx.beginPath();
+          ctx.moveTo(40, y);
+          ctx.lineTo(220, y);
+          ctx.stroke();
+          ctx.fillText(`${parseFloat(val).toFixed(0)}`, 245, y + 12);
+        } else if (i % 5 === 0) {
+          ctx.beginPath();
+          ctx.moveTo(40, y);
+          ctx.lineTo(160, y);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(40, y);
+          ctx.lineTo(100, y);
+          ctx.stroke();
+        }
+      }
+
+      ctx.font = 'bold 34px Arial';
+      ctx.fillText("V (cm³)", 130, 70);
+      ctx.font = '24px Arial';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText("ĐCNN 0,5", 130, 105);
+
+      return new THREE.CanvasTexture(cv);
+    }
+
+    const rulerPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.18, cylinderH - 0.12),
+      new THREE.MeshBasicMaterial({ map: generateRulerTexture(), transparent: true, side: THREE.DoubleSide })
+    );
+    rulerPlane.position.set(0, cylinderH / 2, cylR + 0.005);
+    cylGroup.add(rulerPlane);
+
+    // Khối khí nén màu cyan phát sáng
+    const gasVolumeMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(cylR - 0.005, cylR - 0.005, 1, 32),
+      new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.12, depthWrite: false })
+    );
+    gasVolumeMesh.position.set(0, 0.5, 0);
+    cylGroup.add(gasVolumeMesh);
+
+    // 250 phân tử khí chuyển động nhiệt Brownian trong lòng xi lanh
+    const gasCount = 240;
+    const gasPosArray = new Float32Array(gasCount * 3);
+    const gasVelocities = [];
+
+    for (let i = 0; i < gasCount; i++) {
+      const r = (cylR - 0.024) * Math.sqrt(Math.random());
+      const theta = Math.random() * 2 * Math.PI;
+      gasPosArray[i * 3] = r * Math.cos(theta);
+      gasPosArray[i * 3 + 1] = 0.08 + Math.random() * 0.7;
+      gasPosArray[i * 3 + 2] = r * Math.sin(theta);
+
+      gasVelocities.push({
+        vx: (Math.random() - 0.5) * 0.016,
+        vy: (Math.random() - 0.5) * 0.016,
+        vz: (Math.random() - 0.5) * 0.016
+      });
+    }
+
+    const gasGeometry = new THREE.BufferGeometry();
+    gasGeometry.setAttribute('position', new THREE.BufferAttribute(gasPosArray, 3));
+    const gasParticles = new THREE.Points(
+      gasGeometry,
+      new THREE.PointsMaterial({ color: 0x67e8f9, size: 0.025, transparent: true, opacity: 0.9 })
+    );
+    cylGroup.add(gasParticles);
+
+    /* --- (2) PÍT-TÔNG KÍN KHÍ & CÁN ĐẨY KIM LOẠI --- */
+    const pistonGroup = new THREE.Group();
+    cylGroup.add(pistonGroup);
+
+    // Đầu pít-tông cao su đen chịu lực kèm vòng ren đồng
+    const pistonRubber = new THREE.Mesh(new THREE.CylinderGeometry(cylR - 0.004, cylR - 0.004, 0.09, 32), rubberPistonMat);
+    pistonGroup.add(pistonRubber);
+
+    const pistonBrassRing = new THREE.Mesh(new THREE.CylinderGeometry(cylR - 0.002, cylR - 0.002, 0.025, 32), brassMat);
+    pistonBrassRing.position.y = 0.03;
+    pistonGroup.add(pistonBrassRing);
+
+    // Cần trục thép mạ bóng
+    const pistonShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.15, 20), chromeMat);
+    pistonShaft.position.y = 0.58;
+    pistonShaft.castShadow = true;
+    pistonGroup.add(pistonShaft);
+
+    // Tay nắm pít-tông chữ T dễ cầm vặn
+    const pistonTHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.3, 20), rubberPistonMat);
+    pistonTHandle.rotation.x = Math.PI / 2;
+    pistonTHandle.position.y = 1.15;
+    pistonTHandle.castShadow = true;
+    pistonGroup.add(pistonTHandle);
+
+    /* --- (3) ÁP KẾ BOURDON ĐƯỜNG KÍNH RỘNG --- */
+    const gaugeGroup = new THREE.Group();
+    gaugeGroup.position.set(0.38, 2.95, 0);
+    scene.add(gaugeGroup);
+
+    // Tay đỡ áp kế
+    const gaugeBracket = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.06, 0.06), redClampMat);
+    gaugeBracket.position.set(-0.19, -0.22, 0);
+    gaugeGroup.add(gaugeBracket);
+
+    // Vỏ kim loại & vành bezel chrome
+    const gaugeBody = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.12, 48), castIronMat);
+    gaugeBody.rotation.x = Math.PI / 2;
+    gaugeBody.castShadow = true;
+    gaugeGroup.add(gaugeBody);
+
+    const gaugeBezel = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.022, 16, 48), chromeMat);
+    gaugeBezel.position.z = 0.06;
+    gaugeGroup.add(gaugeBezel);
+
+    const gaugeCoverGlass = new THREE.Mesh(new THREE.CircleGeometry(0.33, 36), glassTubeMat);
+    gaugeCoverGlass.position.z = 0.062;
+    gaugeGroup.add(gaugeCoverGlass);
+
+    // Mặt số áp kế: thang đo 0 đến 2.5 x 10^5 Pa
+    function generateGaugeDialTexture() {
+      const cv = document.createElement('canvas');
+      cv.width = 1024;
+      cv.height = 1024;
+      const ctx = cv.getContext('2d');
+
+      const cx = 512, cy = 512, r = 440;
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 470, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = '#0f172a';
+      ctx.stroke();
+
+      const startAngle = (135 * Math.PI) / 180;
+      const endAngle = (405 * Math.PI) / 180;
+      const totalSpan = endAngle - startAngle;
+
+      const ticks = 50; // ĐCNN 0.05 x 10^5 Pa
+      for (let i = 0; i <= ticks; i++) {
+        const frac = i / ticks;
+        const ang = startAngle + frac * totalSpan;
+        const isMajor = i % 10 === 0;
+        const isMid = i % 2 === 0;
+
+        const tickLen = isMajor ? 55 : (isMid ? 35 : 20);
+        ctx.lineWidth = isMajor ? 7 : (isMid ? 4 : 2.5);
+        ctx.strokeStyle = '#0f172a';
+
+        const x1 = cx + (r - tickLen) * Math.cos(ang);
+        const y1 = cy + (r - tickLen) * Math.sin(ang);
+        const x2 = cx + r * Math.cos(ang);
+        const y2 = cy + r * Math.sin(ang);
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        if (isMajor) {
+          const numR = r - 95;
+          const nx = cx + numR * Math.cos(ang);
+          const ny = cy + numR * Math.sin(ang) + 15;
+          ctx.fillStyle = '#020617';
+          ctx.font = 'bold 44px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText((i * 0.05).toFixed(1), nx, ny);
+        }
+      }
+
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 36px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText("ÁP KẾ KHÍ", cx, cy - 85);
+
+      ctx.fillStyle = '#dc2626';
+      ctx.font = 'bold 38px Arial';
+      ctx.fillText("× 10⁵ Pa", cx, cy + 85);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '26px Arial';
+      ctx.fillText("ĐCNN: 0,05 × 10⁵ Pa", cx, cy + 130);
+
+      return new THREE.CanvasTexture(cv);
+    }
+
+    const dialFace = new THREE.Mesh(
+      new THREE.CircleGeometry(0.32, 48),
+      new THREE.MeshBasicMaterial({ map: generateGaugeDialTexture() })
+    );
+    dialFace.position.z = 0.058;
+    gaugeGroup.add(dialFace);
+
+    // Kim đo áp kế màu đỏ quay mượt mà
+    const needlePivot = new THREE.Group();
+    needlePivot.position.set(0, 0, 0.061);
+    gaugeGroup.add(needlePivot);
+
+    const needleCenterCap = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.02, 16), castIronMat);
+    needleCenterCap.rotation.x = Math.PI / 2;
+    needlePivot.add(needleCenterCap);
+
+    const needleGeom = new THREE.BufferGeometry();
+    const needleVertices = new Float32Array([
+      -0.007, -0.04, 0,
+       0.007, -0.04, 0,
+       0.002,  0.24, 0,
+       0,      0.26, 0,
+      -0.002,  0.24, 0
+    ]);
+    const needleIndices = [0, 1, 2, 0, 2, 4, 2, 3, 4];
+    needleGeom.setAttribute('position', new THREE.BufferAttribute(needleVertices, 3));
+    needleGeom.setIndex(needleIndices);
+    const needleMesh = new THREE.Mesh(needleGeom, new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+    needleMesh.position.z = 0.002;
+    needlePivot.add(needleMesh);
+
+    // Ống dẫn khí silicon dẻo uốn cong mềm mại từ đáy xi lanh lên áp kế
+    const hoseCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(cylinderX - cylR - 0.03, cylinderBaseY + 0.06, 0),
+      new THREE.Vector3(cylinderX - 0.22, 1.5, 0.12),
+      new THREE.Vector3(cylinderX - 0.18, 2.2, 0.08),
+      new THREE.Vector3(cylinderX, 2.65, 0)
+    ]);
+    const hoseMesh = new THREE.Mesh(
+      new THREE.TubeGeometry(hoseCurve, 32, 0.014, 12, false),
+      new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.35, metalness: 0.1 })
+    );
+    hoseMesh.castShadow = true;
+    scene.add(hoseMesh);
+
+    /* ==========================================================================
+       4. KHẮC PHỤC TRIỆT ĐỂ LỖI CHE KHUẤT:
+          HỆ THỐNG LEADER LINES & CALLOUTS DẠNG CÁNH (WINGS LAYOUT)
+       ========================================================================== */
+    // Định nghĩa 5 bộ phận và tọa độ 3D thực tế
+    const calloutConfig = [
+      {
+        id: "callout-3",
+        num: "3",
+        name: "Áp kế cơ học",
+        desc: "ĐCNN 0,05 × 10⁵ Pa",
+        side: "left", // Dạt hẳn sang trái phía trên
+        yOffsetPercent: 22,
+        anchor3D: new THREE.Vector3(cylinderX, 2.95, 0.08)
+      },
+      {
+        id: "callout-4",
+        num: "4",
+        name: "Giá đỡ thí nghiệm",
+        desc: "Đế chữ V & cọc kẹp đôi",
+        side: "left", // Dạt hẳn sang trái phía dưới
+        yOffsetPercent: 55,
+        anchor3D: new THREE.Vector3(0, 1.75, 0)
+      },
+      {
+        id: "callout-2",
+        num: "2",
+        name: "Pít-tông & Cán đẩy",
+        desc: "Gioăng cao su kín khí",
+        side: "right", // Dạt hẳn sang phải phía trên
+        yOffsetPercent: 28,
+        dynamicPistonAnchor: true
+      },
+      {
+        id: "callout-1",
+        num: "1",
+        name: "Xi lanh trong suốt",
+        desc: "ĐCNN 0,5 cm³",
+        side: "right", // Dạt sang phải giữa
+        yOffsetPercent: 52,
+        anchor3D: new THREE.Vector3(cylinderX + cylR, 1.65, 0)
+      },
+      {
+        id: "callout-5",
+        num: "5",
+        name: "Thước chia thể tích",
+        desc: "Vạch khắc từ 10 - 35 cm³",
+        side: "right", // Dạt sang phải dưới
+        yOffsetPercent: 74,
+        anchor3D: new THREE.Vector3(cylinderX + cylR, 1.25, 0.08)
+      }
+    ];
+
+    const calloutsContainer = document.getElementById('callouts-container');
+    const svgLeaderLines = document.getElementById('leader-lines-svg');
+
+    // Tạo HTML elements cho 5 thẻ Callout
+    calloutConfig.forEach(item => {
+      const box = document.createElement('div');
+      box.id = item.id;
+      box.className = `callout-box absolute flex items-center gap-2.5 px-3 py-1.5 rounded-xl glass-panel border border-cyan-500/40 shadow-2xl ${item.side === 'left' ? 'flex-row-reverse text-right' : 'text-left'}`;
+      box.innerHTML = `
+        <span class="w-6 h-6 rounded-lg bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center font-bold text-xs text-white shadow-md flex-shrink-0">${item.num}</span>
+        <div>
+          <div class="font-bold text-xs text-cyan-200 tracking-tight whitespace-nowrap">${item.name}</div>
+          <div class="text-[10px] text-slate-300 font-medium whitespace-nowrap">${item.desc}</div>
+        </div>
+      `;
+      calloutsContainer.appendChild(box);
+      item.domEl = box;
+    });
+
+    // Cập nhật vị trí thẻ và vẽ đường Leader Line SVG nối đến đối tượng 3D
+    function updateLeaderLinesAndCallouts() {
+      if (!showCallouts) {
+        svgLeaderLines.style.opacity = '0';
+        calloutsContainer.style.opacity = '0';
+        return;
+      }
+      svgLeaderLines.style.opacity = '1';
+      calloutsContainer.style.opacity = '1';
+
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      // Tính vị trí anchor 3D của pít-tông theo thể tích hiện tại
+      const pY = cylinderBaseY + getPistonHeight(currentV);
+      const pistonAnchor3D = new THREE.Vector3(cylinderX + cylR, pY + 0.06, 0);
+
+      // Khoảng đệm an toàn 2 cánh (tránh khu vực bảng điều khiển và tránh mô hình trung tâm)
+      const leftColX = Math.max(340, w * 0.28);
+      const rightColX = Math.min(w - 380, w * 0.72);
+
+      let svgHtml = '';
+
+      calloutConfig.forEach(item => {
+        let anchor = item.dynamicPistonAnchor ? pistonAnchor3D : item.anchor3D;
+        const screenPos = anchor.clone().project(camera);
+
+        // Chuyển sang tọa độ pixel màn hình
+        const ax = (screenPos.x * 0.5 + 0.5) * w;
+        const ay = (-screenPos.y * 0.5 + 0.5) * h;
+
+        // Điểm đặt thẻ Callout dạt sang hai cánh
+        const isLeft = item.side === 'left';
+        const cardX = isLeft ? leftColX : rightColX;
+        const cardY = (item.yOffsetPercent / 100) * h;
+
+        // Vị trí gắn thẻ
+        item.domEl.style.top = `${cardY}px`;
+        if (isLeft) {
+          item.domEl.style.right = `${w - cardX}px`;
+          item.domEl.style.left = 'auto';
+        } else {
+          item.domEl.style.left = `${cardX}px`;
+          item.domEl.style.right = 'auto';
+        }
+
+        // Tọa độ đầu nối trên thẻ HTML
+        const cardConnectX = isLeft ? cardX : cardX;
+        const cardConnectY = cardY + 18;
+
+        // Nếu điểm 3D nằm phía sau camera, ẩn line
+        if (screenPos.z > 1) {
+          item.domEl.style.opacity = '0';
+          return;
+        }
+        item.domEl.style.opacity = '1';
+
+        // Điểm gập trung gian để đường chỉ dẫn thẳng thớm, hiện đại
+        const midX = isLeft ? (cardConnectX + ax) / 2 - 20 : (cardConnectX + ax) / 2 + 20;
+
+        // Đường gập cong chữ Z mềm (Polyline SVG)
+        svgHtml += `
+          <polyline points="${ax},${ay} ${midX},${ay} ${cardConnectX},${cardConnectY}" 
+            fill="none" 
+            stroke="url(#${isLeft ? 'lineGradLeft' : 'lineGradRight'})" 
+            stroke-width="1.8" 
+            stroke-dasharray="4 2"
+            filter="url(#glow)" />
+          <circle cx="${ax}" cy="${ay}" r="3.5" fill="#38bdf8" />
+          <circle cx="${ax}" cy="${ay}" r="6.5" fill="none" stroke="#38bdf8" stroke-width="1.2" opacity="0.6"/>
+        `;
+      });
+
+      svgLeaderLines.innerHTML = `
+        <defs>
+          <linearGradient id="lineGradLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.95" />
+            <stop offset="100%" stop-color="#0284c7" stop-opacity="0.25" />
+          </linearGradient>
+          <linearGradient id="lineGradRight" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#0284c7" stop-opacity="0.25" />
+            <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.95" />
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        ${svgHtml}
+      `;
+    }
+
+    /* ==========================================================================
+       5. NHIỆT ĐỘNG LỰC HỌC (LOGIC ĐỊNH LUẬT BOYLE)
+       ========================================================================== */
+    const minV = 15.0;
+    const maxV = 35.0;
+    const minPistonH = 0.28;
+    const maxPistonH = 1.30;
+
+    function getPistonHeight(v) {
+      const frac = (v - minV) / (maxV - minV);
+      return minPistonH + frac * (maxPistonH - minPistonH);
+    }
+
+    function calculateTargetNeedleAngle(pressure) {
+      const maxP = 2.5;
+      const clampedP = Math.max(0, Math.min(pressure, maxP));
+      const startAngleRad = (135 * Math.PI) / 180;
+      const sweepAngleRad = (270 * Math.PI) / 180;
+      return startAngleRad - (clampedP / maxP) * sweepAngleRad;
+    }
+
+    function updatePhysicsAndUI(v) {
+      currentV = parseFloat(v);
+      const exactP = BASE_PV / currentV; // p = C / V
+
+      // 1. Cập nhật vị trí pít-tông
+      const h = getPistonHeight(currentV);
+      pistonGroup.position.y = h;
+
+      // 2. Thể tích khối khí trong suốt
+      gasVolumeMesh.scale.y = h;
+      gasVolumeMesh.position.y = h / 2;
+
+      // 3. Góc xoay kim áp kế (sẽ nội suy mượt trong animate loop)
+      targetNeedleAngle = calculateTargetNeedleAngle(exactP);
+
+      // 4. Mật độ và độ sáng khí khi bị nén
+      const compression = (35.0 - currentV) / 20.0;
+      gasVolumeMesh.material.opacity = 0.10 + compression * 0.18;
+      gasParticles.material.size = 0.024 + compression * 0.015;
+
+      // 5. HUD các thông số đo tức thời
+      document.getElementById('val-pressure').innerText = exactP.toFixed(2);
+      document.getElementById('val-volume').innerText = currentV.toFixed(1);
+      document.getElementById('val-pv').innerHTML = `${(exactP * currentV).toFixed(2)} <span class="text-[10px] text-slate-400 font-normal">10⁵ Pa·cm³</span>`;
+      document.getElementById('slider-volume-indicator').innerText = `V = ${currentV.toFixed(1)} cm³`;
+      document.getElementById('piston-slider').value = currentV;
+
+      // Cập nhật điểm chạy trên đồ thị
+      renderGraph(currentV, exactP);
+    }
+
+    /* ==========================================================================
+       6. ĐỒ THỊ ĐẲNG NHIỆT HYPERBOL THỰC NGHIỆM
+       ========================================================================== */
+    const graphCanvas = document.getElementById('graph-canvas');
+    const gCtx = graphCanvas.getContext('2d');
+
+    function renderGraph(activeV, activeP) {
+      const rect = graphCanvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      graphCanvas.width = rect.width * dpr;
+      graphCanvas.height = rect.height * dpr;
+
+      const w = graphCanvas.width;
+      const h = graphCanvas.height;
+      gCtx.clearRect(0, 0, w, h);
+
+      const padL = 38 * dpr;
+      const padR = 20 * dpr;
+      const padB = 26 * dpr;
+      const padT = 16 * dpr;
+
+      const gW = w - padL - padR;
+      const gH = h - padT - padB;
+
+      // Trục tọa độ
+      gCtx.strokeStyle = '#475569';
+      gCtx.lineWidth = 1.5 * dpr;
+      gCtx.beginPath();
+      gCtx.moveTo(padL, padT);
+      gCtx.lineTo(padL, h - padB);
+      gCtx.lineTo(w - padR, h - padB);
+      gCtx.stroke();
+
+      gCtx.fillStyle = '#94a3b8';
+      gCtx.font = `${9 * dpr}px Plus Jakarta Sans, sans-serif`;
+      gCtx.fillText("p (10⁵ Pa)", padL - 10 * dpr, padT - 5 * dpr);
+      gCtx.fillText("V (cm³)", w - padR - 32 * dpr, h - padB + 20 * dpr);
+
+      function toX(vVal) {
+        return padL + ((vVal - 10) / (40 - 10)) * gW;
+      }
+      function toY(pVal) {
+        return (h - padB) - (pVal / 2.5) * gH;
+      }
+
+      // Vạch chia trục
+      gCtx.strokeStyle = 'rgba(51, 65, 85, 0.45)';
+      gCtx.lineWidth = 1 * dpr;
+      [15, 20, 25, 30, 35].forEach(vTick => {
+        const x = toX(vTick);
+        gCtx.beginPath();
+        gCtx.moveTo(x, padT);
+        gCtx.lineTo(x, h - padB);
+        gCtx.stroke();
+        gCtx.fillStyle = '#64748b';
+        gCtx.fillText(vTick, x - 6 * dpr, h - padB + 14 * dpr);
+      });
+
+      [0.5, 1.0, 1.5, 2.0].forEach(pTick => {
+        const y = toY(pTick);
+        gCtx.beginPath();
+        gCtx.moveTo(padL, y);
+        gCtx.lineTo(w - padR, y);
+        gCtx.stroke();
+        gCtx.fillStyle = '#64748b';
+        gCtx.fillText(pTick.toFixed(1), padL - 26 * dpr, y + 3 * dpr);
+      });
+
+      // Nhánh hypebol lý thuyết p = 30 / V
+      gCtx.strokeStyle = '#38bdf8';
+      gCtx.lineWidth = 2.2 * dpr;
+      gCtx.beginPath();
+      for (let vStep = 12; vStep <= 38; vStep += 0.5) {
+        const pTheo = BASE_PV / vStep;
+        const x = toX(vStep);
+        const y = toY(pTheo);
+        if (vStep === 12) gCtx.moveTo(x, y);
+        else gCtx.lineTo(x, y);
+      }
+      gCtx.stroke();
+
+      // Vẽ các điểm thực nghiệm trong bảng của học sinh
+      experimentRecords.forEach(item => {
+        const rx = toX(item.v);
+        const ry = toY(item.p);
+        gCtx.fillStyle = '#10b981';
+        gCtx.beginPath();
+        gCtx.arc(rx, ry, 3.5 * dpr, 0, Math.PI * 2);
+        gCtx.fill();
+      });
+
+      // Điểm trạng thái hiện tại (Đỏ viền trắng nổi bật)
+      const cx = toX(activeV);
+      const cy = toY(activeP);
+
+      gCtx.setLineDash([3 * dpr, 3 * dpr]);
+      gCtx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+      gCtx.lineWidth = 1.2 * dpr;
+      gCtx.beginPath();
+      gCtx.moveTo(cx, h - padB);
+      gCtx.lineTo(cx, cy);
+      gCtx.lineTo(padL, cy);
+      gCtx.stroke();
+      gCtx.setLineDash([]);
+
+      gCtx.fillStyle = '#ef4444';
+      gCtx.beginPath();
+      gCtx.arc(cx, cy, 5.5 * dpr, 0, Math.PI * 2);
+      gCtx.fill();
+      gCtx.strokeStyle = '#ffffff';
+      gCtx.lineWidth = 2 * dpr;
+      gCtx.stroke();
+    }
+
+    /* ==========================================================================
+       7. BẢNG 9.1 SỐ LIỆU THỰC HÀNH HỌC SINH
+       ========================================================================== */
+    const tableBody = document.getElementById('table-body');
+    const meanPvLabel = document.getElementById('mean-pv-label');
+
+    function renderTableRows() {
+      tableBody.innerHTML = '';
+      if (experimentRecords.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-500 italic">Chưa có lần đo nào. Bấm nút màu xanh để ghi số liệu.</td></tr>`;
+        meanPvLabel.innerText = "0.00";
+        return;
+      }
+
+      let sumPV = 0;
+      experimentRecords.forEach((item, index) => {
+        sumPV += item.pv;
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-800/60 transition";
+        tr.innerHTML = `
+          <td class="py-1 px-1 font-bold text-slate-400">#${index + 1}</td>
+          <td class="py-1 px-1 text-cyan-400 font-semibold">${item.v.toFixed(1)}</td>
+          <td class="py-1 px-1 text-amber-400 font-semibold">${item.p.toFixed(2)}</td>
+          <td class="py-1 px-1 text-right text-emerald-400 font-bold">${item.pv.toFixed(2)}</td>
+        `;
+        tableBody.appendChild(tr);
+      });
+
+      const meanVal = sumPV / experimentRecords.length;
+      meanPvLabel.innerText = meanVal.toFixed(2);
+    }
+
+    /* ==========================================================================
+       8. CÁC TƯƠNG TÁC ĐIỀU KHIỂN & SỰ KIỆN GIAO DIỆN
+       ========================================================================== */
+    const slider = document.getElementById('piston-slider');
+    slider.addEventListener('input', (e) => {
+      isAutoCycling = false;
+      updateAutoCycleButtonUI();
+      updatePhysicsAndUI(parseFloat(e.target.value));
+    });
+
+    document.getElementById('btn-step-down').addEventListener('click', () => {
+      isAutoCycling = false;
+      updateAutoCycleButtonUI();
+      updatePhysicsAndUI(Math.max(minV, currentV - 0.5));
+    });
+
+    document.getElementById('btn-step-up').addEventListener('click', () => {
+      isAutoCycling = false;
+      updateAutoCycleButtonUI();
+      updatePhysicsAndUI(Math.min(maxV, currentV + 0.5));
+    });
+
+    // Nút chạy chu trình liên tục
+    const btnAutoCycle = document.getElementById('btn-auto-cycle');
+    const iconAutoCycle = document.getElementById('icon-auto-cycle');
+    const textAutoCycle = document.getElementById('text-auto-cycle');
+
+    function updateAutoCycleButtonUI() {
+      if (isAutoCycling) {
+        iconAutoCycle.className = "fa-solid fa-pause";
+        textAutoCycle.innerText = "Tạm dừng nén - giãn";
+        btnAutoCycle.className = "w-full py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white transition flex items-center justify-center gap-2 shadow-lg shadow-amber-600/30";
+      } else {
+        iconAutoCycle.className = "fa-solid fa-play";
+        textAutoCycle.innerText = "Chạy chu trình nén - giãn liên tục";
+        btnAutoCycle.className = "w-full py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30";
+      }
+    }
+
+    btnAutoCycle.addEventListener('click', () => {
+      isAutoCycling = !isAutoCycling;
+      updateAutoCycleButtonUI();
+    });
+
+    // Ghi số liệu kèm sai số quan sát tự nhiên của mắt người (0.01 - 0.02)
+    document.getElementById('btn-record-data').addEventListener('click', () => {
+      const v = parseFloat(currentV.toFixed(1));
+      const exactP = BASE_PV / v;
+      // Sai số ngẫu nhiên nhẹ của học sinh khi quan sát vạch ĐCNN
+      const humanEyeNoise = (Math.random() - 0.5) * 0.02;
+      const observedP = Math.round((exactP + humanEyeNoise) * 100) / 100;
+      const observedPV = Math.round((observedP * v) * 100) / 100;
+
+      experimentRecords.push({
+        id: Date.now(),
+        v: v,
+        p: observedP,
+        pv: observedPV
+      });
+
+      renderTableRows();
+      renderGraph(currentV, exactP);
+    });
+
+    // Xóa bảng
+    document.getElementById('btn-clear-table').addEventListener('click', () => {
+      experimentRecords = [];
+      renderTableRows();
+      renderGraph(currentV, BASE_PV / currentV);
+    });
+
+    // Bật/tắt xoay 360 độ tự động
+    const btnAutoOrbit = document.getElementById('btn-toggle-orbit');
+    btnAutoOrbit.addEventListener('click', () => {
+      isAutoOrbit = !isAutoOrbit;
+      controls.autoRotate = isAutoOrbit;
+      controls.autoRotateSpeed = 1.2;
+      if (isAutoOrbit) {
+        btnAutoOrbit.classList.add('bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/30');
+      } else {
+        btnAutoOrbit.classList.remove('bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/30');
+      }
+    });
+
+    // Bật/tắt Leader lines & callouts
+    const btnLabels = document.getElementById('btn-toggle-labels');
+    btnLabels.addEventListener('click', () => {
+      showCallouts = !showCallouts;
+      if (showCallouts) {
+        btnLabels.classList.replace('bg-slate-800', 'bg-cyan-500/20');
+        btnLabels.classList.replace('text-slate-300', 'text-cyan-300');
+        btnLabels.classList.add('border-cyan-500/40');
+      } else {
+        btnLabels.classList.replace('bg-cyan-500/20', 'bg-slate-800');
+        btnLabels.classList.replace('text-cyan-300', 'text-slate-300');
+        btnLabels.classList.remove('border-cyan-500/40');
+      }
+      updateLeaderLinesAndCallouts();
+    });
+
+    // Reset Camera
+    document.getElementById('btn-reset-cam').addEventListener('click', () => {
+      camera.position.set(2.6, 2.7, 4.8);
+      controls.target.set(0, 1.7, 0);
+      controls.update();
+    });
+
+    // Thu gọn / Mở rộng Panel trái & phải
+    const leftPanel = document.getElementById('left-panel');
+    const btnCollapseLeft = document.getElementById('btn-collapse-left');
+    const iconCollapseLeft = document.getElementById('icon-collapse-left');
+    let isLeftCollapsed = false;
+
+    btnCollapseLeft.addEventListener('click', () => {
+      isLeftCollapsed = !isLeftCollapsed;
+      if (isLeftCollapsed) {
+        leftPanel.style.transform = 'translateX(-92%)';
+        iconCollapseLeft.className = "fa-solid fa-chevron-right text-[10px]";
+      } else {
+        leftPanel.style.transform = 'translateX(0)';
+        iconCollapseLeft.className = "fa-solid fa-chevron-left text-[10px]";
+      }
+      setTimeout(updateLeaderLinesAndCallouts, 320);
+    });
+
+    const rightPanel = document.getElementById('right-panel');
+    const btnToggleRight = document.getElementById('btn-toggle-right-panel');
+    const btnCloseRight = document.getElementById('btn-close-right');
+    let isRightOpen = true;
+
+    function toggleRightPanel() {
+      isRightOpen = !isRightOpen;
+      if (isRightOpen) {
+        rightPanel.style.transform = 'translateX(0)';
+      } else {
+        rightPanel.style.transform = 'translateX(110%)';
+      }
+      setTimeout(() => {
+        renderGraph(currentV, BASE_PV / currentV);
+        updateLeaderLinesAndCallouts();
+      }, 320);
+    }
+    btnToggleRight.addEventListener('click', toggleRightPanel);
+    btnCloseRight.addEventListener('click', toggleRightPanel);
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderGraph(currentV, BASE_PV / currentV);
+      updateLeaderLinesAndCallouts();
+    });
+
+    /* ==========================================================================
+       9. VÒNG LẶP RENDER & HIỆU ỨNG THỜI GIAN THỰC
+       ========================================================================== */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const elapsedTime = clock.getElapsedTime();
+      controls.update();
+
+      // Bầu trời sao lấp lánh (Twinkle & drift)
+      starField.rotation.y += 0.0002;
+      const colors = starGeometry.attributes.color.array;
+      for (let i = 0; i < starCount; i++) {
+        const speed = starTwinkleSpeeds[i];
+        const pulse = 0.7 + 0.3 * Math.sin(elapsedTime * speed + i);
+        colors[i * 3] = colors[i * 3] * pulse;
+      }
+      starGeometry.attributes.color.needsUpdate = true;
+
+      // Xử lý sao băng lướt qua ngẫu nhiên
+      if (!shootingActive && Math.random() < 0.003) {
+        triggerShootingStar();
+      }
+      if (shootingActive) {
+        shootingTime += delta;
+        const curPos = shootingOrigin.clone().addScaledVector(shootingVel, shootingTime);
+        const trailPos = curPos.clone().addScaledVector(shootingVel, -0.15);
+
+        const posAttr = shootingStarGeo.attributes.position;
+        posAttr.setXYZ(0, curPos.x, curPos.y, curPos.z);
+        posAttr.setXYZ(1, trailPos.x, trailPos.y, trailPos.z);
+        posAttr.needsUpdate = true;
+
+        shootingStarMat.opacity = Math.max(0, 1.0 - shootingTime * 1.5);
+        if (shootingTime > 0.8) {
+          shootingActive = false;
+          shootingStarMat.opacity = 0;
+        }
+      }
+
+      // Xoay kim áp kế mượt mà (Lerp damping)
+      currentNeedleAngle += (targetNeedleAngle - currentNeedleAngle) * 0.12;
+      needlePivot.rotation.z = currentNeedleAngle;
+
+      // Mô phỏng tự động nén giãn liên tục
+      if (isAutoCycling) {
+        let nextV = currentV + cycleDir * cycleSpeed * delta;
+        if (nextV >= maxV) {
+          nextV = maxV;
+          cycleDir = -1;
+        } else if (nextV <= minV) {
+          nextV = minV;
+          cycleDir = 1;
+        }
+        updatePhysicsAndUI(nextV);
+      }
+
+      // Chuyển động nhiệt phân tử khí trong lòng xi lanh
+      const pArr = gasGeometry.attributes.position.array;
+      const ceilH = getPistonHeight(currentV) - 0.04;
+      const rLimit = cylR - 0.024;
+      const speedMult = 1.0 + (35.0 - currentV) * 0.045; // Áp suất tăng -> va chạm tăng
+
+      for (let i = 0; i < gasCount; i++) {
+        let x = pArr[i * 3];
+        let y = pArr[i * 3 + 1];
+        let z = pArr[i * 3 + 2];
+        const vel = gasVelocities[i];
+
+        x += vel.vx * speedMult;
+        y += vel.vy * speedMult;
+        z += vel.vz * speedMult;
+
+        const d = Math.sqrt(x * x + z * z);
+        if (d > rLimit) {
+          vel.vx = -vel.vx;
+          vel.vz = -vel.vz;
+          x = (x / d) * rLimit;
+          z = (z / d) * rLimit;
+        }
+        if (y < 0.06) {
+          y = 0.06;
+          vel.vy = -vel.vy;
+        }
+        if (y > ceilH) {
+          y = ceilH;
+          vel.vy = -Math.abs(vel.vy);
+        }
+
+        pArr[i * 3] = x;
+        pArr[i * 3 + 1] = y;
+        pArr[i * 3 + 2] = z;
+      }
+      gasGeometry.attributes.position.needsUpdate = true;
+
+      // Cập nhật hệ thống đường chỉ dẫn & Callout lệch hai bên
+      updateLeaderLinesAndCallouts();
+
+      renderer.render(scene, camera);
+    }
+
+    // Bắt đầu khi trang tải xong
+    window.onload = function() {
+      updatePhysicsAndUI(30.0);
+      renderTableRows();
+      animate();
+    };
+  </script>
+</body>
+</html>
